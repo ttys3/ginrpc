@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.3.3 // indirect
 	github.com/gookit/color v1.2.2 // indirect
 	github.com/mattn/go-isatty v0.0.12 // indirect
-	github.com/xxjwxc/ginrpc v0.0.0-20200125154118-d3d0ccaad29a
+	github.com/xxjwxc/ginrpc v0.0.0-20200226155350-8c2adee6478b
 	golang.org/x/sys v0.0.0-20200212091648-12a6c2dcc1e4 // indirect
 	gopkg.in/go-playground/validator.v9 v9.30.2 // indirect
 	gopkg.in/yaml.v2 v2.2.8 // indirect
