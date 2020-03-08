@@ -14,9 +14,14 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/xxjwxc/public/errors"
 	"github.com/xxjwxc/public/message"
+	"github.com/xxjwxc/public/myast"
 	"github.com/xxjwxc/public/mybigcamel"
 	"github.com/xxjwxc/public/myreflect"
 )
+
+func (b *_Base) parseReqResp(typ reflect.Type, isObj bool) (reflect.Type, reflect.Type) {
+	return nil, nil
+}
 
 // checkHandlerFunc Judge whether to match rules
 func (b *_Base) checkHandlerFunc(typ reflect.Type, isObj bool) (int, bool) { // 判断是否匹配规则,返回参数个数
@@ -187,14 +192,56 @@ func (b *_Base) unmarshal(c *gin.Context, v interface{}) error {
 
 var routeRegex = regexp.MustCompile(`@Router\s+(\S+)(?:\s+\[(\S+)\])?`)
 
-func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, num int) []genComment {
+func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, imports map[string]string, objPkg string, num int) []genComment {
+	var note string
 	var gcs []genComment
+	var req, resp *parmInfo
+	if f.Type.Params != nil {
+		if f.Type.Params.NumFields() > 1 {
+			req = &parmInfo{}
+			d := f.Type.Params.List[1].Type
+			switch exp := d.(type) {
+			case *ast.SelectorExpr: // 非本文件包
+				req.Type = exp.Sel.Name
+				if x, ok := exp.X.(*ast.Ident); ok {
+					req.Pkg = x.Name
+					req.Import = imports[req.Pkg]
+
+				}
+			case *ast.StarExpr: // 本文件
+				if x, ok := exp.X.(*ast.Ident); ok {
+					req.Type = x.Name
+					req.Import = objPkg // 本包
+				}
+			}
+		}
+	}
+	if f.Type.Results != nil {
+		if f.Type.Results.NumFields() > 1 {
+			resp = &parmInfo{}
+			d := f.Type.Results.List[0].Type
+			if exp, ok := d.(*ast.StarExpr); ok {
+				switch expx := exp.X.(type) {
+				case *ast.SelectorExpr: // 非本地包
+					resp.Type = expx.Sel.Name
+					if x, ok := expx.X.(*ast.Ident); ok {
+						resp.Pkg = x.Name
+						resp.Import = imports[resp.Pkg]
+					}
+				case *ast.Ident: // 本文件
+					resp.Type = expx.Name
+					resp.Import = objPkg // 本包
+				}
+			}
+		}
+	}
+
 	if f.Doc != nil {
 		for _, c := range f.Doc.List {
 			gc := genComment{}
-			t := strings.TrimSpace(strings.TrimLeft(c.Text, "//"))
+			t := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
 			if strings.HasPrefix(t, "@Router") {
-				t := strings.TrimSpace(strings.TrimLeft(c.Text, "//"))
+				// t := strings.TrimSpace(strings.TrimPrefix(c.Text, "//"))
 				matches := routeRegex.FindStringSubmatch(t)
 				if len(matches) == 3 {
 					gc.RouterPath = matches[1]
@@ -208,8 +255,12 @@ func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, num int
 				} else {
 					// return nil, errors.New("Router information is missing")
 				}
+			} else if strings.HasPrefix(t, objFunc) { // find note
+				t := strings.TrimSpace(strings.TrimPrefix(c.Text, objFunc))
+				note += t
 			}
 		}
+
 	}
 
 	//defalt
@@ -219,12 +270,19 @@ func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, num int
 		gcs = append(gcs, gc)
 	}
 
+	// add note 添加注释
+	for i := 0; i < len(gcs); i++ {
+		gcs[i].Note = note
+		gcs[i].Req = req
+		gcs[i].Resp = resp
+	}
+
 	return gcs
 }
 
 // tryGenRegister gen out the Registered config info  by struct object,[prepath + bojname.]
 func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
-	modPkg, modFile, isFind := getModuleInfo()
+	modPkg, modFile, isFind := myast.GetModuleInfo()
 	if !isFind {
 		return false
 	}
@@ -237,42 +295,28 @@ func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
 		// fmt.Println(objPkg, objName)
 
 		// find path
-		objFile := evalSymlinks(modPkg, modFile, objPkg)
+		objFile := myast.EvalSymlinks(modPkg, modFile, objPkg)
 		fmt.Println(objFile)
 
-		astPkgs, _b := getAstPkgs(objPkg, objFile) // get ast trees.
+		astPkgs, _b := myast.GetAstPkgs(objPkg, objFile) // get ast trees.
 		if _b {
-			refTyp := reflect.TypeOf(c)
-			funMp := make(map[string]*ast.FuncDecl, refTyp.NumMethod())
-
-			// find all exported func of sturct objName
-			for _, fl := range astPkgs.Files {
-				for _, d := range fl.Decls {
-					switch specDecl := d.(type) {
-					case *ast.FuncDecl:
-						if specDecl.Recv != nil {
-							if exp, ok := specDecl.Recv.List[0].Type.(*ast.StarExpr); ok { // Check that the type is correct first beforing throwing to parser
-								if strings.Compare(fmt.Sprint(exp.X), objName) == 0 { // is the same struct
-									funMp[specDecl.Name.String()] = specDecl // catch
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// end
+			imports := myast.AnalysisImport(astPkgs)
+			funMp := myast.GetObjFunMp(astPkgs, objName)
 			// ast.Print(token.NewFileSet(), astPkgs)
 			// fmt.Println(b)
 
+			refTyp := reflect.TypeOf(c)
 			// Install the methods
 			for m := 0; m < refTyp.NumMethod(); m++ {
 				method := refTyp.Method(m)
 				num, _b := b.checkHandlerFunc(method.Type /*.Interface()*/, true)
 				if _b {
 					if sdl, ok := funMp[method.Name]; ok {
-						gcs := b.parserComments(sdl, objName, method.Name, num)
+						gcs := b.parserComments(sdl, objName, method.Name, imports, objPkg, num)
 						for _, gc := range gcs {
+							// get struct default doc info . 结构体信息
+							// req, resp := b.parseReqResp(method.Type, true)
+							// -------------end
 							checkOnceAdd(objName+"."+method.Name, gc.RouterPath, gc.Methods)
 						}
 					}

@@ -143,7 +143,7 @@ func getInfo() map[string][]genRouterInfo {
 func buildRelativePath(prepath, routerPath string) string {
 	if strings.HasSuffix(prepath, "/") {
 		if strings.HasPrefix(routerPath, "/") {
-			return prepath + strings.TrimLeft(routerPath, "/")
+			return prepath + strings.TrimPrefix(routerPath, "/")
 		}
 		return prepath + routerPath
 	}
