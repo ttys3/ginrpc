@@ -318,7 +318,7 @@ func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
 
 		// find path
 		objFile := myast.EvalSymlinks(modPkg, modFile, objPkg)
-		fmt.Println(objFile)
+		// fmt.Println(objFile)
 
 		astPkgs, _b := myast.GetAstPkgs(objPkg, objFile) // get ast trees.
 		if _b {
