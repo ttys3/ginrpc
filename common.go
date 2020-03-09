@@ -16,6 +16,7 @@ import (
 	"github.com/xxjwxc/public/message"
 	"github.com/xxjwxc/public/myast"
 	"github.com/xxjwxc/public/mybigcamel"
+	"github.com/xxjwxc/public/mydoc"
 	"github.com/xxjwxc/public/myreflect"
 )
 
@@ -190,9 +191,32 @@ func (b *_Base) unmarshal(c *gin.Context, v interface{}) error {
 	return c.ShouldBind(v)
 }
 
+func (b *_Base) parserStruct(req, resp *parmInfo, astPkg *ast.Package, modPkg, modFile string) (r, p *mydoc.StructInfo) {
+	ant := myast.NewStructAnalys(modPkg, modFile)
+	if req != nil {
+		tmp := astPkg
+		if len(req.Pkg) > 0 {
+			objFile := myast.EvalSymlinks(modPkg, modFile, req.Import)
+			tmp, _ = myast.GetAstPkgs(req.Pkg, objFile) // get ast trees.
+		}
+		r = ant.ParserStruct(tmp, req.Type)
+	}
+
+	if resp != nil {
+		tmp := astPkg
+		if len(resp.Pkg) > 0 {
+			objFile := myast.EvalSymlinks(modPkg, modFile, resp.Import)
+			tmp, _ = myast.GetAstPkgs(resp.Pkg, objFile) // get ast trees.
+		}
+		r = ant.ParserStruct(tmp, resp.Type)
+	}
+
+	return
+}
+
 var routeRegex = regexp.MustCompile(`@Router\s+(\S+)(?:\s+\[(\S+)\])?`)
 
-func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, imports map[string]string, objPkg string, num int) []genComment {
+func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, imports map[string]string, objPkg string, num int) ([]genComment, *parmInfo, *parmInfo) {
 	var note string
 	var gcs []genComment
 	var req, resp *parmInfo
@@ -256,7 +280,7 @@ func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, imports
 					// return nil, errors.New("Router information is missing")
 				}
 			} else if strings.HasPrefix(t, objFunc) { // find note
-				t := strings.TrimSpace(strings.TrimPrefix(c.Text, objFunc))
+				t = strings.TrimSpace(strings.TrimPrefix(t, objFunc))
 				note += t
 			}
 		}
@@ -273,16 +297,14 @@ func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, imports
 	// add note 添加注释
 	for i := 0; i < len(gcs); i++ {
 		gcs[i].Note = note
-		gcs[i].Req = req
-		gcs[i].Resp = resp
 	}
 
-	return gcs
+	return gcs, req, resp
 }
 
 // tryGenRegister gen out the Registered config info  by struct object,[prepath + bojname.]
 func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
-	modPkg, modFile, isFind := myast.GetModuleInfo()
+	modPkg, modFile, isFind := myast.GetModuleInfo(2)
 	if !isFind {
 		return false
 	}
@@ -312,7 +334,9 @@ func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
 				num, _b := b.checkHandlerFunc(method.Type /*.Interface()*/, true)
 				if _b {
 					if sdl, ok := funMp[method.Name]; ok {
-						gcs := b.parserComments(sdl, objName, method.Name, imports, objPkg, num)
+						gcs, req, resp := b.parserComments(sdl, objName, method.Name, imports, objPkg, num)
+						docReq, docResp := b.parserStruct(req, resp, astPkgs, modPkg, modFile)
+						fmt.Println(docReq, docResp)
 						for _, gc := range gcs {
 							// get struct default doc info . 结构体信息
 							// req, resp := b.parseReqResp(method.Type, true)
