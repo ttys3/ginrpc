@@ -208,7 +208,7 @@ func (b *_Base) parserStruct(req, resp *parmInfo, astPkg *ast.Package, modPkg, m
 			objFile := myast.EvalSymlinks(modPkg, modFile, resp.Import)
 			tmp, _ = myast.GetAstPkgs(resp.Pkg, objFile) // get ast trees.
 		}
-		r = ant.ParserStruct(tmp, resp.Type)
+		p = ant.ParserStruct(tmp, resp.Type)
 	}
 
 	return
@@ -228,9 +228,8 @@ func (b *_Base) parserComments(f *ast.FuncDecl, objName, objFunc string, imports
 			case *ast.SelectorExpr: // 非本文件包
 				req.Type = exp.Sel.Name
 				if x, ok := exp.X.(*ast.Ident); ok {
-					req.Pkg = x.Name
-					req.Import = imports[req.Pkg]
-
+					req.Import = imports[x.Name]
+					req.Pkg = myast.GetImportPkg(req.Import)
 				}
 			case *ast.StarExpr: // 本文件
 				if x, ok := exp.X.(*ast.Ident); ok {
@@ -309,6 +308,8 @@ func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
 		return false
 	}
 
+	doc := mydoc.NewDoc(b.groupPath)
+
 	for _, c := range cList {
 		refVal := reflect.ValueOf(c)
 		t := reflect.Indirect(refVal).Type()
@@ -336,11 +337,9 @@ func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
 					if sdl, ok := funMp[method.Name]; ok {
 						gcs, req, resp := b.parserComments(sdl, objName, method.Name, imports, objPkg, num)
 						docReq, docResp := b.parserStruct(req, resp, astPkgs, modPkg, modFile)
-						fmt.Println(docReq, docResp)
+						fmt.Println(method.Name, docReq, docResp)
 						for _, gc := range gcs {
-							// get struct default doc info . 结构体信息
-							// req, resp := b.parseReqResp(method.Type, true)
-							// -------------end
+							doc.AddOne(gc.RouterPath, gc.Methods, docReq, docResp)
 							checkOnceAdd(objName+"."+method.Name, gc.RouterPath, gc.Methods)
 						}
 					}
