@@ -339,7 +339,7 @@ func (b *_Base) tryGenRegister(router *gin.Engine, cList ...interface{}) bool {
 						docReq, docResp := b.parserStruct(req, resp, astPkgs, modPkg, modFile)
 						fmt.Println(method.Name, docReq, docResp)
 						for _, gc := range gcs {
-							doc.AddOne(objName, gc.RouterPath, gc.Methods, docReq, docResp)
+							doc.AddOne(objName, gc.RouterPath, gc.Methods, gc.Note, docReq, docResp)
 							checkOnceAdd(objName+"."+method.Name, gc.RouterPath, gc.Methods)
 						}
 					}
