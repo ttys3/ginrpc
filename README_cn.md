@@ -13,6 +13,10 @@
 - 支持参数自动绑定
 - 自带请求参数过滤及绑定实现 binding:"required"  [validator](go-playground/validator.v8)
 - 支持 [grpc-go](https://github.com/grpc/grpc-go) 绑定模式
+- 支持[swagger 文档](http://editor.swagger.io/)导出 [MORE](https://github.com/xxjwxc/gmsec)
+- 支持[markdown/mindoc 文档](https://www.iminho.me/)导出 [MORE](https://github.com/xxjwxc/gmsec)
+
+- [更多请看](https://github.com/xxjwxc/gmsec)
 
 ### 支持多种接口模式
 

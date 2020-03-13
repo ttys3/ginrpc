@@ -19,6 +19,10 @@
 - implementation of parameter filtering and binding with request
 - code registration simple and supports multiple ways of registration
 - [grpc-go](https://github.com/grpc/grpc-go) bind support
+- Support [swagger 文档](http://editor.swagger.io/) [MORE](https://github.com/xxjwxc/gmsec)
+- Support [markdown/mindoc 文档](https://www.iminho.me/) [MORE](https://github.com/xxjwxc/gmsec)
+
+- [DEMO](https://github.com/xxjwxc/gmsec)
 
 ## API details
 
