@@ -7,6 +7,8 @@
 
 ## [ginprc](https://github.com/xxjwxc/ginrpc) 注解路由，自动参数绑定工具
 
+![img](/image/ginrpc.gif)
+
 ## golang gin 参数自动绑定工具
 - 支持对象自动注册及注解路由
 - 支持参数自动绑定
@@ -164,8 +166,9 @@ type ReqTest struct {
 	Password    string `json:"password"`
 }
 ```
+
 - [更多 >>>](https://github.com/xxjwxc/gmsec)
-  
+
 
 ## Stargazers over time
 

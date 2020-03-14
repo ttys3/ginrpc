@@ -8,7 +8,7 @@
 
 ## Automatic parameter binding base on [go-gin](https://github.com/gin-gonic/gin)
 
-
+![img](/image/ginrpc.gif)
 
 ## Golang gin automatic parameter binding
 
