@@ -44,52 +44,7 @@
 
   func(*gin.Context,req)(resp,error)
 
-## 一,Parameter auto binding
-
-```go
-
-package main
-
-import (
-	"fmt"
-	"net/http"
-	"github.com/gin-gonic/gin"
-	"github.com/xxjwxc/ginrpc"
-	"github.com/xxjwxc/ginrpc/api"
-)
-
-type ReqTest struct {
-	Access_token string `json:"access_token"`
-	UserName     string `json:"user_name" binding:"required"` // With verification mode.带校验方式
-	Password     string `json:"password"`
-}
-
-//TestFun6 Callback method with custom context and resolved req parameters
-func TestFun6(c *gin.Context, req ReqTest)  (*ReqTest, error) {
-	fmt.Println(c.Params)
-	fmt.Println(req)
-
-	c.JSON(http.StatusOK, req)
-}
-
-func main() {
-	base := ginrpc.New() 
-	router := gin.Default()
-	router.POST("/test6", base.HandlerFunc(TestFun6))
-	base.RegisterHandlerFunc(router, []string{"post", "get"}, "/test", TestFun4) // Multiple request mode registration
-	router.Run(":8080")
-}
-
-   ```
-
-- curl
-
-  ```
-  curl 'http://127.0.0.1:8080/test4' -H 'Content-Type: application/json' -d '{"access_token":"111", "user_name":"222", "password":"333"}'
-
-  ```
-
-## 二,Object registration (annotation routing)
+## 一 Parameter auto binding,Object registration (annotation routing)
 
 ### Initialization project (this project is named after `ginweb`)
 	``` go mod init ginweb ```
@@ -104,6 +59,7 @@ import (
 	"net/http"
 
 	_ "ginweb/routers" // Debug mode requires adding [mod] / routes to register annotation routes.debug模式需要添加[mod]/routers 注册注解路由
+	"github.com/xxjwxc/public/mydoc/myswagger" // swagger 支持
 
 	"github.com/gin-gonic/gin"
 	"github.com/xxjwxc/ginrpc"
@@ -135,20 +91,25 @@ func (s *Hello) Hello2(c *gin.Context, req ReqTest) {
 
 // [grpc-go](https://github.com/grpc/grpc-go)
 // with request,return parameter and error
-// Hello3 Route without annotation (the parameter is 2 default post)
-func (s *Hello) Hello3(c *gin.Context, req ReqTest) (*ReqTest, error) {
+// TestFun6 Route without annotation (the parameter is 2 default post)
+func TestFun6(c *gin.Context, req ReqTest) (*ReqTest, error) {
 	fmt.Println(req)
-	return &req,nil
+	//c.JSON(http.StatusOK, req)
+	return &req, nil
 }
 
 func main() {
-	base := ginrpc.New(ginrpc.WithCtx(func(c *gin.Context) interface{} {
-		return api.NewCtx(c)
-	}), ginrpc.WithDebug(true), ginrpc.WithGroup("xxjwxc"))
 
+	// swagger
+	myswagger.SetHost("https://localhost:8080")
+	myswagger.SetBasePath("gmsec")
+	myswagger.SetSchemes(true, false)
+	// -----end --
+	base := ginrpc.New(ginrpc.WithGroup("xxjwxc"))
 	router := gin.Default()
-	base.Register(router, new(Hello))                          // object register like(go-micro)
-	// or base.Register(router, new(Hello)) 
+	base.Register(router, new(Hello)) // object register like(go-micro)
+	router.POST("/test6", base.HandlerFunc(TestFun6))                            // function register
+	base.RegisterHandlerFunc(router, []string{"post", "get"}, "/test", TestFun6) 
 	router.Run(":8080")
 }
    ```
@@ -200,6 +161,21 @@ func main() {
   ```
   curl 'http://127.0.0.1:8080/xxjwxc/hello.hello2' -H 'Content-Type: application/json' -d '{"access_token":"111", "user_name":"222", "password":"333"}'
   ```
+
+## 二. swagger/markdown/mindoc Document generation description
+
+### 1.For object registration 'ginrpc. Register' mode, document export is supported
+### 2.Export supports annotation routing, Parameter annotation and default value (` tag '. ` default')
+### 3.Default export path:(`/docs/swagger/swagger.json`,`/docs/markdown`)
+### 4 struct demo
+```
+type ReqTest struct {
+	AccessToken string `json:"access_token"`
+	UserName    string `json:"user_name" binding:"required"` // 带校验方式
+	Password    string `json:"password"`
+}
+```
+- [more >>>](https://github.com/xxjwxc/gmsec)
 
 ## Stargazers over time
 

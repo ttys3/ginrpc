@@ -7,7 +7,6 @@
 
 ## [ginprc](https://github.com/xxjwxc/ginrpc) 注解路由，自动参数绑定工具
 
-
 ## golang gin 参数自动绑定工具
 - 支持对象自动注册及注解路由
 - 支持参数自动绑定
@@ -32,56 +31,11 @@
 
    func(*gin.Context,req)(resp,error)
 
-## 1.参数自动绑定
-
-```go
-
-package main
-
-import (
-	"fmt"
-
-	"github.com/gin-gonic/gin"
-	"github.com/xxjwxc/ginrpc"
-	"github.com/xxjwxc/ginrpc/api"
-)
-
-type ReqTest struct {
-	AccessToken string `json:"access_token"`
-	UserName    string `json:"user_name" binding:"required"` // 带校验方式
-	Password    string `json:"password"`
-}
-
-//TestFun6 带自定义context跟已解析的req参数回调方式,err,resp 返回模式
-func TestFun6(c *gin.Context, req ReqTest) (*ReqTest, error) {
-	fmt.Println(req)
-	//c.JSON(http.StatusOK, req)
-	return &req, nil
-}
-
-func main() {
-	base := ginrpc.New()
-	router := gin.Default()
-	router.POST("/test6", base.HandlerFunc(TestFun6))
-	router.Run(":8080")
-}
-
-   ```
-
-[更多>>](https://github.com/xxjwxc/ginrpc/tree/master/sample/ginweb)
-
-### curl
-
-  ```
-  curl 'http://127.0.0.1:8080/test4' -H 'Content-Type: application/json' -d '{"access_token":"111", "user_name":"222", "password":"333"}'
-
-  ```
-
-## 2.对象注册(注解路由)
+## 一. 参数自动绑定/对象注册(注解路由)
 
 ### 初始化项目(本项目以ginweb 为名字)
 
-	``` go mod init ginweb ```
+` go mod init ginweb `
 
 ### 代码 
 
@@ -93,7 +47,7 @@ import (
 	"net/http"
 
 	_ "ginweb/routers" // debug模式需要添加[mod]/routers 注册注解路由
-
+	"github.com/xxjwxc/public/mydoc/myswagger" // swagger 支持
 	"github.com/gin-gonic/gin"
 	"github.com/xxjwxc/ginrpc"
 	"github.com/xxjwxc/ginrpc/api"
@@ -127,10 +81,24 @@ func (s *Hello) Hello3(c *gin.Context, req ReqTest) (*ReqTest, error) {
 	return &req,nil
 }
 
+//TestFun6 带自定义context跟已解析的req参数回调方式,err,resp 返回模式
+func TestFun6(c *gin.Context, req ReqTest) (*ReqTest, error) {
+	fmt.Println(req)
+	//c.JSON(http.StatusOK, req)
+	return &req, nil
+}
+
 func main() {
+	// swagger
+	myswagger.SetHost("https://localhost:8080")
+	myswagger.SetBasePath("gmsec")
+	myswagger.SetSchemes(true, false)
+	// -----end --
 	base := ginrpc.New(ginrpc.WithGroup("xxjwxc"))
 	router := gin.Default()
 	base.Register(router, new(Hello)) // 对象注册 like(go-micro)
+	router.POST("/test6", base.HandlerFunc(TestFun6))                            // 函数注册
+	base.RegisterHandlerFunc(router, []string{"post", "get"}, "/test", TestFun6) // 多种请求方式注册
 	router.Run(":8080")
 }
    ```
@@ -157,15 +125,15 @@ func main() {
 
  ```
 
- #### 说明:如果对象函数中不加注解路由，系统会默认添加注解路由。post方式：带req(2个参数(ctx,req))，get方式为一个参数(ctx)
+#### 说明:如果对象函数中不加注解路由，系统会默认添加注解路由。post方式：带req(2个参数(ctx,req))，get方式为一个参数(ctx)
 
 ### 1. 注解路由会自动创建[root]/routers/gen_router.go 文件 需要在调用时加：
 
-	```
-	_ "[mod]/routers" // debug模式需要添加[mod]/routers 注册注解路由
-	```
+```
+_ "[mod]/routers" // debug模式需要添加[mod]/routers 注册注解路由
+```
 
-	默认也会在项目根目录生成 `gen_router.data` 文件(保留此文件，可以不用添加上面代码嵌入)
+默认也会在项目根目录生成 `gen_router.data` 文件(保留此文件，可以不用添加上面代码嵌入)
 
 ### 2. 注册函数说明
 
@@ -183,14 +151,28 @@ func main() {
 
 ### 3. 支持绑定grpc函数: [ginweb](/sample/ginweb)
 
+## 二. swagger/markdown/mindoc 文档生成说明
+
+### 1.对于对象注册`ginrpc.Register`模式,支持文档导出
+### 2.导出支持注解路由,支持参数注释,支持默认值(`tag`.`default`)
+### 3.默认导出路径:(`/docs/swagger/swagger.json`,`/docs/markdown`)
+### 4 struct demo
+```
+type ReqTest struct {
+	AccessToken string `json:"access_token"`
+	UserName    string `json:"user_name" binding:"required"` // 带校验方式
+	Password    string `json:"password"`
+}
+```
+- [更多 >>>](https://github.com/xxjwxc/gmsec)
+  
+
 ## Stargazers over time
 
 [![Stargazers over time](https://starchart.cc/xxjwxc/ginrpc.svg)](https://starchart.cc/xxjwxc/ginrpc)
-  
+
 ## 下一步
 
-	1.导出api文档
-
-	2.导出postman测试配置
+- 添加服务发现
 
 ### 代码地址： [ginprc](https://github.com/xxjwxc/ginrpc) 如果喜欢请给星支持
